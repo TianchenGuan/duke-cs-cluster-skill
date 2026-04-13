@@ -1,0 +1,22 @@
+# Editor / OS scratch
+*.swp
+*.swo
+*~
+.DS_Store
+Thumbs.db
+
+# Python (in case scripts grow)
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
+
+# Slurm outputs (if verify_skill.sh is run in the repo dir)
+slurm-*.out
+*.log
+
+# Personal notes / drafts that shouldn't be committed
+NOTES.md
+TODO.md
+scratch/
