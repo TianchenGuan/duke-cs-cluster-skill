@@ -18,21 +18,27 @@ Verified on the real cluster as of April 2026.
 
 ## Installation
 
-Claude skills live in `~/.claude/skills/` (or the equivalent project-scoped skills directory). Clone and symlink:
+Claude skills live in `~/.claude/skills/`. Clone and symlink all three skills:
 
 ```bash
-git clone https://github.com/<your-username>/duke-cluster-skill.git
+git clone https://github.com/<your-username>/duke-cs-cluster-skill.git
 mkdir -p ~/.claude/skills
-ln -s "$(pwd)/duke-cluster-skill/duke-cluster" ~/.claude/skills/duke-cluster
+
+# Install all three skills
+for skill in duke-cluster check-availability my-jobs; do
+    ln -sf "$(pwd)/duke-cs-cluster-skill/$skill" ~/.claude/skills/$skill
+done
 ```
 
 Or copy if you'd rather not symlink:
 
 ```bash
-cp -r duke-cluster-skill/duke-cluster ~/.claude/skills/duke-cluster
+for skill in duke-cluster check-availability my-jobs; do
+    cp -r "duke-cs-cluster-skill/$skill" ~/.claude/skills/$skill
+done
 ```
 
-Claude Code (and any other tool that reads the Anthropic skill format) will automatically pick it up and trigger it when you mention Slurm jobs, GPU requests, or Duke cluster paths.
+Claude Code will automatically pick up the main `duke-cluster` skill when you mention Slurm jobs, GPU requests, or Duke cluster paths. The `check-availability` and `my-jobs` skills register as slash commands.
 
 ## Usage examples
 
@@ -45,13 +51,38 @@ Once installed, the skill triggers on prompts like:
 
 Claude will consult the skill's tables, copy the relevant template from `templates/`, and produce a working script tuned to the Duke cluster.
 
+## Slash commands
+
+Once installed, these commands are available in Claude Code:
+
+- `/check-availability` — Overview of current GPU availability across the cluster
+- `/check-availability <gpu_type>` — Detailed drill-down on a specific GPU type (a5000, a6000, rtx_pro_6000, v100, p100, rtx_2080, rtx_5000)
+- `/my-jobs` — Your currently running and pending jobs with resource totals
+
+Example:
+
+> User: `/check-availability a6000`
+>
+> Claude: **A6000 (fitz-[05-08])** — 2 of 16 GPUs idle, 3 users running jobs.
+> [table of running jobs]
+> Verdict: reasonable wait expected. Submit now if your experiment is under 8 hours.
+
 ## Helper scripts
 
-The skill ships with three utility scripts you can run directly from the command line:
+The skill ships with utility scripts you can also run directly from the command line:
 
 ```bash
 # Is the cluster busy right now?
 bash duke-cluster/scripts/check_cluster_load.sh
+
+# Drill down on a specific GPU type
+bash duke-cluster/scripts/check_gpu_contention.sh a6000
+
+# Estimate wait time for a GPU request
+bash duke-cluster/scripts/estimate_wait.sh a6000 1
+
+# Show your running and pending jobs
+bash duke-cluster/scripts/check_my_jobs.sh
 
 # Refresh the skill against live cluster state (run this if something seems off)
 bash duke-cluster/scripts/verify_skill.sh > current_state.txt
@@ -63,28 +94,35 @@ bash duke-cluster/scripts/prestage_hf_model.sh meta-llama/Llama-2-7b-hf
 ## Repository layout
 
 ```
-duke-cluster-skill/
+duke-cs-cluster-skill/
 ├── README.md
 ├── LICENSE
 ├── CONTRIBUTING.md
 ├── .gitignore
-└── duke-cluster/               # ← symlink this to ~/.claude/skills/duke-cluster
-    ├── SKILL.md                # Core skill document (always loaded)
-    ├── templates/              # Copy-paste-ready sbatch templates
-    │   ├── cpu_only.sbatch
-    │   ├── single_gpu.sbatch
-    │   ├── multi_gpu_single_node.sbatch
-    │   ├── multi_node.sbatch
-    │   └── smoke_test_gpu.sbatch
-    ├── references/             # Loaded on demand
-    │   ├── failure_modes.md    # Common error symptoms and fixes
-    │   ├── distributed_training.md
-    │   ├── node_ips.md         # Per-node IP addresses
-    │   └── apptainer.md        # Container usage
-    └── scripts/                # Runnable helpers
-        ├── check_cluster_load.sh
-        ├── verify_skill.sh
-        └── prestage_hf_model.sh
+├── duke-cluster/               # Main skill (reference library)
+│   ├── SKILL.md                # Core skill document (always loaded)
+│   ├── templates/              # Copy-paste-ready sbatch templates
+│   │   ├── cpu_only.sbatch
+│   │   ├── single_gpu.sbatch
+│   │   ├── multi_gpu_single_node.sbatch
+│   │   ├── multi_node.sbatch
+│   │   └── smoke_test_gpu.sbatch
+│   ├── references/             # Loaded on demand
+│   │   ├── failure_modes.md
+│   │   ├── distributed_training.md
+│   │   ├── node_ips.md
+│   │   └── apptainer.md
+│   └── scripts/                # Shared helpers (used by slash commands)
+│       ├── check_cluster_load.sh
+│       ├── check_gpu_contention.sh
+│       ├── check_my_jobs.sh
+│       ├── estimate_wait.sh
+│       ├── prestage_hf_model.sh
+│       └── verify_skill.sh
+├── check-availability/         # /check-availability slash command
+│   └── SKILL.md
+└── my-jobs/                    # /my-jobs slash command
+    └── SKILL.md
 ```
 
 ## Keeping the skill fresh
